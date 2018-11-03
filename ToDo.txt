@@ -1,4 +1,9 @@
 Make it so you need the blocks in survival
+help menu
+list warps
+check if config blocks are right if manually changed
+
+Fix super server (Last)
 
 
 

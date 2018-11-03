@@ -93,10 +93,10 @@ public class Main extends JavaPlugin {
 		// /mp tpc world x y z warp_name
 
 		String warp_name = args[5];
-		final double distance_from_plate_block = 0.7;
+		final double distance_from_plate_block = 0.75;
 
 		Location fromLocation = new Location(getServer().getWorld(args[1]), Double.parseDouble(args[2]),
-				Double.parseDouble(args[3]), Double.parseDouble(args[4])).add(0, 2, 0);
+				Double.parseDouble(args[3]), Double.parseDouble(args[4]));
 
 		if (getConfig().getString("warp_locations." + warp_name) == null) {
 			for (Player player : getServer().getOnlinePlayers()) {
@@ -148,7 +148,7 @@ public class Main extends JavaPlugin {
 
 		// Make Portal
 		moveLocation(2, "down", location, player);
-		spawnCommandBlock(moveLocation(1, "forward", location, player), args[1]);
+		spawnCommandBlock(moveLocation(1, "forward", location, player), args[1], player);
 		moveLocation(1, "up", location, player).getBlock().setType(portalBlockType);
 
 		moveLocation(1, "left", location, player).getBlock().setType(portalBlockType);
@@ -193,13 +193,20 @@ public class Main extends JavaPlugin {
 		sign.update();
 	}
 
-	private void spawnCommandBlock(Location location, String warp_name) {
+	private void spawnCommandBlock(Location location, String warp_name, Player player) {
 		location.getBlock().setType(Material.COMMAND_BLOCK);
 
 		CommandBlock cmdBlock = (CommandBlock) location.getBlock().getState();
+		double x = (int) location.getX();
+		double y = (int) location.getY();
+		double z = (int) location.getZ();
 
-		cmdBlock.setCommand("/mp tpc " + location.getWorld().getName() + " " + (int) location.getX() + " "
-				+ (int) location.getY() + " " + (int) location.getZ() + " " + warp_name);
+		x = (x < 0 ? x - 0.5 : x + 0.5);
+		y += 2;
+		z = (z < 0 ? z - 0.5 : z + 0.5);
+
+		// X + 0.5 ~ Z + 0.5 ~ Y + 2 ~ Offset
+		cmdBlock.setCommand("/mp tpc " + location.getWorld().getName() + " " + x + " " + y + " " + z + " " + warp_name);
 		cmdBlock.update();
 	}
 
@@ -315,7 +322,23 @@ public class Main extends JavaPlugin {
 			setWarpLocation(sender, args);
 		} else if (args[1].equalsIgnoreCase("remove")) {
 			removeWarpLocation(sender, args[2]);
+		} else if (args[1].equalsIgnoreCase("list")) {
+			listWarpLocations(sender);
 		}
+	}
+
+	private void listWarpLocations(CommandSender sender) {
+		Object[] keys = getConfig().getConfigurationSection("warp_locations").getKeys(false).toArray();
+
+		String listMessage = "Locations:\n";
+
+		for (Object location : keys) {
+			listMessage += ChatColor.GREEN + location.toString() + ChatColor.WHITE + ", ";
+		}
+
+		// -4 to remove space, comma, and ChatColor character
+		listMessage = listMessage.substring(0, listMessage.length() - 4);
+		sender.sendMessage(listMessage);
 	}
 
 	private void removeWarpLocation(CommandSender sender, String warpName) {
@@ -443,13 +466,7 @@ public class Main extends JavaPlugin {
 	}
 
 	private void testCommand(CommandSender sender, String[] args) {
-		try {
-			if (getConfig().getString("warp_locations.fucker").equals("fucker")) {
 
-			}
-		} catch (Exception e) {
-			sender.sendMessage("NOT FOUND");
-		}
 	}
 
 	private void setBlockType(CommandSender sender, String[] args) {
