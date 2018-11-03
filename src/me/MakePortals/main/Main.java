@@ -16,6 +16,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 import net.md_5.bungee.api.ChatColor;
 
 public class Main extends JavaPlugin {
+	static ActionList<PortalCratedAction> actionList;
+
 	static final Material[] fallingBlocks = { Material.SAND, Material.GRAVEL, Material.ANVIL, Material.DRAGON_EGG,
 			Material.WHITE_CONCRETE_POWDER, Material.ORANGE_CONCRETE_POWDER, Material.MAGENTA_CONCRETE_POWDER,
 			Material.LIGHT_BLUE_CONCRETE_POWDER, Material.YELLOW_CONCRETE_POWDER, Material.LIME_CONCRETE_POWDER,
@@ -24,10 +26,15 @@ public class Main extends JavaPlugin {
 			Material.BROWN_CONCRETE_POWDER, Material.GREEN_CONCRETE_POWDER, Material.RED_CONCRETE_POWDER,
 			Material.BLACK_CONCRETE_POWDER };
 
+	public Main() {
+	}
+
 	@Override
 	public void onEnable() {
 		getConfig().options().copyDefaults(true);
 		saveConfig();
+
+		actionList = new ActionList<PortalCratedAction>(getConfig().getInt("max_undos"));
 	}
 
 	@Override
@@ -50,7 +57,7 @@ public class Main extends JavaPlugin {
 				testCommand(sender, args);
 				break;
 			case "create":
-				createPortal(sender, args);
+				createPortalCommand(sender, args);
 				break;
 			case "tpc":
 				cmdTeleport(sender, args);
@@ -124,7 +131,7 @@ public class Main extends JavaPlugin {
 		}
 	}
 
-	private void createPortal(CommandSender sender, String[] args) {
+	private void createPortalCommand(CommandSender sender, String[] args) {
 		if (!(sender instanceof Player)) {
 			sender.sendMessage(ChatColor.RED + "Must be a player to run this command");
 			return;
@@ -142,13 +149,21 @@ public class Main extends JavaPlugin {
 			return;
 		}
 
+		//Checks done
+		
 		Player player = (Player) sender;
 		Location location = player.getLocation().clone();
+		
+		makePortal(player, location, args[1]);
+
+	}
+
+	private void makePortal(Player player, Location location, String warp_name) {
 		Material portalBlockType = Material.valueOf(getConfig().getString("portal_block_type"));
 
 		// Make Portal
 		moveLocation(2, "down", location, player);
-		spawnCommandBlock(moveLocation(1, "forward", location, player), args[1], player);
+		spawnCommandBlock(moveLocation(1, "forward", location, player), warp_name, player);
 		moveLocation(1, "up", location, player).getBlock().setType(portalBlockType);
 
 		moveLocation(1, "left", location, player).getBlock().setType(portalBlockType);
@@ -175,7 +190,7 @@ public class Main extends JavaPlugin {
 		moveLocation(1, "left", location, player).getBlock().setType(portalBlockType);
 		moveLocation(2, "right", location, player).getBlock().setType(portalBlockType);
 		moveLocation(1, "left", location, player);
-		spawnSign(moveLocation(1, "back", location, player), args[1], player.getFacing());
+		spawnSign(moveLocation(1, "back", location, player), warp_name, player.getFacing());
 	}
 
 	private void spawnSign(Location moveLocation, String warp_name, BlockFace blockFace) {

@@ -1,2 +1,3 @@
 portal_block_type: BLUE_CONCRETE
 portal_signs_enabled: "true"
+max_undos: 20
