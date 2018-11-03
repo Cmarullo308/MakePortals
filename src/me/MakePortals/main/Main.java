@@ -3,9 +3,11 @@ package me.MakePortals.main;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.CommandBlock;
 import org.bukkit.block.Sign;
+import org.bukkit.block.data.Directional;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -53,7 +55,11 @@ public class Main extends JavaPlugin {
 			case "tpc":
 				cmdTeleport(sender, args);
 				break;
+			case "signsenabled":
+				toggleSigns(sender, args);
+				break;
 			default:
+				sender.sendMessage(ChatColor.RED + "Invalid command");
 				break;
 			}
 		}
@@ -61,26 +67,59 @@ public class Main extends JavaPlugin {
 		return true;
 	}
 
-	private void cmdTeleport(CommandSender sender, String[] args) {
-		getLogger().info("AAAAAAAAAAAA");
+	private void toggleSigns(CommandSender sender, String[] args) {
+		if (!sender.hasPermission("makeportals.togglesigns")) {
+			noPermission(sender);
+			return;
+		}
 
+		if (args.length != 2) {
+			sender.sendMessage(ChatColor.RED + "Invalid number of arguements");
+			return;
+		}
+
+		if (args[1].equalsIgnoreCase("True")) {
+			getConfig().set("portal_signs_enabled", "true");
+			sender.sendMessage(ChatColor.GREEN + "Portal signs enabled");
+		} else if (args[1].equalsIgnoreCase("False")) {
+			getConfig().set("portal_signs_enabled", "false");
+			sender.sendMessage(ChatColor.GREEN + "Portal signs disabled");
+		}
+
+		saveConfig();
+	}
+
+	private void cmdTeleport(CommandSender sender, String[] args) {
 		// /mp tpc world x y z warp_name
+
+		String warp_name = args[5];
+		final double distance_from_plate_block = 0.7;
+
 		Location fromLocation = new Location(getServer().getWorld(args[1]), Double.parseDouble(args[2]),
 				Double.parseDouble(args[3]), Double.parseDouble(args[4])).add(0, 2, 0);
 
-		World world = getServer().getWorld(getConfig().getString("warp_locations." + args[5] + ".world"));
-		double x = Double.parseDouble(getConfig().getString("warp_locations." + args[5] + ".x"));
-		double y = Double.parseDouble(getConfig().getString("warp_locations." + args[5] + ".y"));
-		double z = Double.parseDouble(getConfig().getString("warp_locations." + args[5] + ".z"));
+		if (getConfig().getString("warp_locations." + warp_name) == null) {
+			for (Player player : getServer().getOnlinePlayers()) {
+				if (player.getLocation().distance(fromLocation) < distance_from_plate_block) {
+					player.sendMessage("Warp \"" + warp_name + "\" does not exist");
+				}
+			}
+			return;
+		}
+
+		World world = getServer().getWorld(getConfig().getString("warp_locations." + warp_name + ".world"));
+		double x = Double.parseDouble(getConfig().getString("warp_locations." + warp_name + ".x"));
+		double y = Double.parseDouble(getConfig().getString("warp_locations." + warp_name + ".y"));
+		double z = Double.parseDouble(getConfig().getString("warp_locations." + warp_name + ".z"));
 
 		Location toLocation = new Location(world, x, y, z);
 
-		toLocation.setYaw((float) getConfig().getDouble("warp_locations." + args[5] + ".yaw"));
-		toLocation.setPitch((float) getConfig().getDouble("warp_locations." + args[5] + ".pitch"));
+		toLocation.setYaw((float) getConfig().getDouble("warp_locations." + warp_name + ".yaw"));
+		toLocation.setPitch((float) getConfig().getDouble("warp_locations." + warp_name + ".pitch"));
 
-		for (Player pl : getServer().getOnlinePlayers()) {
-			if (pl.getLocation().distance(fromLocation) < 1) {
-				pl.teleport(toLocation);
+		for (Player player : getServer().getOnlinePlayers()) {
+			if (player.getLocation().distance(fromLocation) < distance_from_plate_block) {
+				player.teleport(toLocation);
 			}
 		}
 	}
@@ -141,27 +180,17 @@ public class Main extends JavaPlugin {
 
 	private void spawnSign(Location moveLocation, String warp_name, BlockFace blockFace) {
 		moveLocation.getBlock().setType(Material.WALL_SIGN);
+		Block block = moveLocation.getBlock();
+		block.setType(Material.WALL_SIGN);
 
-		org.bukkit.material.Sign signData = new org.bukkit.material.Sign(Material.WALL_SIGN);
+		Directional dir = (Directional) block.getBlockData();
 
-		if (blockFace == BlockFace.NORTH) {
-			signData.setFacingDirection(BlockFace.SOUTH);
-			getLogger().info("AAAAAAAAAAAA");
-		} else if (blockFace == BlockFace.SOUTH) {
-			signData.setFacingDirection(BlockFace.NORTH);
-			getLogger().info("BBBBBBBBBBB");
-		} else if (blockFace == BlockFace.EAST) {
-			signData.setFacingDirection(BlockFace.WEST);
-			getLogger().info("CCCCCCCCCCCC");
-		} else if (blockFace == BlockFace.WEST) {
-			getLogger().info("DDDDDDDDD");
-			signData.setFacingDirection(BlockFace.EAST);
-		}
+		dir.setFacing(blockFace.getOppositeFace());
+		block.setBlockData(dir);
 
-		Sign s = (Sign) moveLocation.getBlock().getState();
-		s.setData(signData);
-		s.setLine(1, warp_name);
-		s.update();
+		Sign sign = (Sign) block.getState();
+		sign.setLine(1, warp_name);
+		sign.update();
 	}
 
 	private void spawnCommandBlock(Location location, String warp_name) {
@@ -216,7 +245,6 @@ public class Main extends JavaPlugin {
 				location.add(numOfTimes, 0, 0);
 			}
 		} else if (direction.equalsIgnoreCase("down")) {
-			player.sendMessage("ASS");
 			location.add(0, -numOfTimes, 0);
 		} else if (direction.equalsIgnoreCase("up")) {
 			location.add(0, numOfTimes, 0);
@@ -286,13 +314,21 @@ public class Main extends JavaPlugin {
 		if (args[1].equalsIgnoreCase("set")) {
 			setWarpLocation(sender, args);
 		} else if (args[1].equalsIgnoreCase("remove")) {
-			removeWarpLocation(sender, args);
+			removeWarpLocation(sender, args[2]);
 		}
 	}
 
-	private void removeWarpLocation(CommandSender sender, String[] args) {
-		// TODO Auto-generated method stub
+	private void removeWarpLocation(CommandSender sender, String warpName) {
+		// Test if exists
+		if (getConfig().getString("warp_locations." + warpName) == null) {
+			sender.sendMessage(ChatColor.RED + "Location\"" + warpName + "\" does not exist ");
+			return;
+		}
 
+		getConfig().set("warp_locations." + warpName, null);
+		saveConfig();
+
+		sender.sendMessage(ChatColor.GREEN + "Location \"" + warpName + "\" removed");
 	}
 
 	private void setWarpLocation(CommandSender sender, String[] args) {
@@ -407,17 +443,13 @@ public class Main extends JavaPlugin {
 	}
 
 	private void testCommand(CommandSender sender, String[] args) {
-		Location location = ((Player) sender).getLocation().add(0, 1, -2);
+		try {
+			if (getConfig().getString("warp_locations.fucker").equals("fucker")) {
 
-		location.getBlock().setType(Material.WALL_SIGN);
-
-		org.bukkit.material.Sign signData = new org.bukkit.material.Sign(Material.WALL_SIGN);
-		signData.setFacingDirection(BlockFace.EAST);
-
-		Sign s = (Sign) location.getBlock().getState();
-		s.setData(signData);
-		s.update();
-		
+			}
+		} catch (Exception e) {
+			sender.sendMessage("NOT FOUND");
+		}
 	}
 
 	private void setBlockType(CommandSender sender, String[] args) {

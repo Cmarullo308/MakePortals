@@ -11,10 +11,10 @@ Make it so you need the blocks in survival
 	org.bukkit.material.Sign signData = new org.bukkit.material.Sign(Material.WALL_SIGN);
 	signData.setFacingDirection(BlockFace.WEST);
 
-	Sign s = (Sign) location.getBlock().getState();
-	s.setData(signData);
-	s.setLine(1, "ass");
-	s.update();
+		Sign s = (Sign) location.getBlock().getState();
+		s.setData(signData);
+		s.setLine(1, "ass");
+		s.update();
 		
 //----------------
 
@@ -27,3 +27,13 @@ Location location = ((Player) sender).getLocation().add(0, 1, 2);
 		
 		cmdBlock.setCommand("/time set night");
 		cmdBlock.update();
+		
+//----------------------
+//Working sign direction
+	Location location = ((Player) sender).getLocation().add(0, 1, -2);
+
+	location.getBlock().setType(Material.WALL_SIGN);
+
+	Directional dir = (Directional) location.getBlock().getBlockData();
+	dir.setFacing(BlockFace.EAST);
+	location.getBlock().setBlockData(dir);
