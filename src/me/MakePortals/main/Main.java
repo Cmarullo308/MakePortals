@@ -16,7 +16,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import net.md_5.bungee.api.ChatColor;
 
 public class Main extends JavaPlugin {
-	static ActionList<PortalCratedAction> actionList;
+	static ActionList<PortalCreatedAction> actionList;
 
 	static final Material[] fallingBlocks = { Material.SAND, Material.GRAVEL, Material.ANVIL, Material.DRAGON_EGG,
 			Material.WHITE_CONCRETE_POWDER, Material.ORANGE_CONCRETE_POWDER, Material.MAGENTA_CONCRETE_POWDER,
@@ -26,20 +26,17 @@ public class Main extends JavaPlugin {
 			Material.BROWN_CONCRETE_POWDER, Material.GREEN_CONCRETE_POWDER, Material.RED_CONCRETE_POWDER,
 			Material.BLACK_CONCRETE_POWDER };
 
-	public Main() {
-	}
-
 	@Override
 	public void onEnable() {
 		getConfig().options().copyDefaults(true);
 		saveConfig();
 
-		actionList = new ActionList<PortalCratedAction>(getConfig().getInt("max_undos"));
+		actionList = new ActionList<PortalCreatedAction>(getConfig().getInt("max_undos"));
 	}
 
 	@Override
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-
+		
 		if (args.length == 0) {
 			sender.sendMessage(ChatColor.RED + "No arguements");
 		} else {
@@ -65,6 +62,12 @@ public class Main extends JavaPlugin {
 			case "signsenabled":
 				toggleSigns(sender, args);
 				break;
+			case "undo":
+				undo(sender, args);
+				break;
+			case "redo":
+				redo(sender, args);
+				break;
 			default:
 				sender.sendMessage(ChatColor.RED + "Invalid command");
 				break;
@@ -72,6 +75,24 @@ public class Main extends JavaPlugin {
 		}
 
 		return true;
+	}
+
+	private void redo(CommandSender sender, String[] args) {
+		if (!(sender instanceof Player)) {
+			sender.sendMessage(ChatColor.RED + "Must be a player to run this command");
+			return;
+		}
+
+		actionList.redo((Player) sender);
+	}
+
+	private void undo(CommandSender sender, String[] args) {
+		if (!(sender instanceof Player)) {
+			sender.sendMessage(ChatColor.RED + "Must be a player to run this command");
+			return;
+		}
+
+		actionList.undo((Player) sender);
 	}
 
 	private void toggleSigns(CommandSender sender, String[] args) {
@@ -149,80 +170,107 @@ public class Main extends JavaPlugin {
 			return;
 		}
 
-		//Checks done
-		
+		// Checks done
+
 		Player player = (Player) sender;
 		Location location = player.getLocation().clone();
-		
+
 		makePortal(player, location, args[1]);
 
 	}
 
 	private void makePortal(Player player, Location location, String warp_name) {
+		PortalCreatedAction action = new PortalCreatedAction(player); // For undos
+
 		Material portalBlockType = Material.valueOf(getConfig().getString("portal_block_type"));
 
 		// Make Portal
 		moveLocation(2, "down", location, player);
-		spawnCommandBlock(moveLocation(1, "forward", location, player), warp_name, player);
-		moveLocation(1, "up", location, player).getBlock().setType(portalBlockType);
-
-		moveLocation(1, "left", location, player).getBlock().setType(portalBlockType);
-		moveLocation(2, "right", location, player).getBlock().setType(portalBlockType);
+		// block 1 - command block
+		spawnCommandBlock(moveLocation(1, "forward", location, player), warp_name, player, action);
+		// block 2 -- under preasure plate
+		location = moveLocation(1, "up", location, player);
+		action.addStep(location, location.getBlock().getType(), portalBlockType);
+		location.getBlock().setType(portalBlockType);
+		// block 3 - floor left
+		location = moveLocation(1, "left", location, player);
+		action.addStep(location, location.getBlock().getType(), portalBlockType);
+		location.getBlock().setType(portalBlockType);
+		// block 4 -- floor right
+		location = moveLocation(2, "right", location, player);
+		action.addStep(location, location.getBlock().getType(), portalBlockType);
+		location.getBlock().setType(portalBlockType);
+		// --
 		moveLocation(1, "forward", location, player);
-		moveLocation(1, "left", location, player).getBlock().setType(portalBlockType);
-		moveLocation(1, "up", location, player).getBlock().setType(portalBlockType);
+		// --
+		// block 5 -- floor back
+		location = moveLocation(1, "left", location, player);
+		action.addStep(location, location.getBlock().getType(), portalBlockType);
+		location.getBlock().setType(portalBlockType);
+		// block 6 -- row 1 back
+		location = moveLocation(1, "up", location, player);
+		action.addStep(location, location.getBlock().getType(), portalBlockType);
+		location.getBlock().setType(portalBlockType);
+		// block 7 -- preasure plate
+		location = moveLocation(1, "back", location, player);
+		action.addStep(location, location.getBlock().getType(), Material.STONE_PRESSURE_PLATE);
+		location.getBlock().setType(Material.STONE_PRESSURE_PLATE);
+		// block 8 -- row 1 left
+		location = moveLocation(1, "left", location, player);
+		action.addStep(location, location.getBlock().getType(), portalBlockType);
+		location.getBlock().setType(portalBlockType);
+		// block 9 -- row one right
+		location = moveLocation(2, "right", location, player);
+		action.addStep(location, location.getBlock().getType(), portalBlockType);
+		location.getBlock().setType(portalBlockType);
+		// --
+		location = moveLocation(1, "forward", location, player);
+		location = moveLocation(1, "left", location, player);
+		// --
 
-		moveLocation(1, "back", location, player).getBlock().setType(Material.STONE_PRESSURE_PLATE);
-		moveLocation(1, "left", location, player).getBlock().setType(portalBlockType);
-		moveLocation(2, "right", location, player).getBlock().setType(portalBlockType);
-		moveLocation(1, "forward", location, player);
-		moveLocation(1, "left", location, player).getBlock().setType(portalBlockType);
-		moveLocation(1, "up", location, player).getBlock().setType(portalBlockType);
+		// block 10
+		location = moveLocation(1, "up", location, player);
+		action.addStep(location, location.getBlock().getType(), portalBlockType);
+		location.getBlock().setType(portalBlockType);
+		// --
+		location = moveLocation(1, "back", location, player);
+		// --
+		// block 11
+		location = moveLocation(1, "left", location, player);
+		action.addStep(location, location.getBlock().getType(), portalBlockType);
+		location.getBlock().setType(portalBlockType);
+		// block 12
+		location = moveLocation(2, "right", location, player);
+		action.addStep(location, location.getBlock().getType(), portalBlockType);
+		location.getBlock().setType(portalBlockType);
+		// --
+		location = moveLocation(1, "forward", location, player);
+		location = moveLocation(1, "left", location, player);
+		// --
 
-		moveLocation(1, "back", location, player);
-		moveLocation(1, "left", location, player).getBlock().setType(portalBlockType);
-		moveLocation(2, "right", location, player).getBlock().setType(portalBlockType);
-		moveLocation(1, "forward", location, player);
-		moveLocation(1, "left", location, player).getBlock().setType(portalBlockType);
-
-		moveLocation(1, "up", location, player).getBlock().setType(portalBlockType);
-		moveLocation(1, "back", location, player).getBlock().setType(portalBlockType);
-		moveLocation(1, "left", location, player).getBlock().setType(portalBlockType);
-		moveLocation(2, "right", location, player).getBlock().setType(portalBlockType);
+		// block 13
+		location = moveLocation(1, "up", location, player);
+		action.addStep(location, location.getBlock().getType(), portalBlockType);
+		location.getBlock().setType(portalBlockType);
+		// block 14
+		location = moveLocation(1, "back", location, player);
+		action.addStep(location, location.getBlock().getType(), portalBlockType);
+		location.getBlock().setType(portalBlockType);
+		// block 15
+		location = moveLocation(1, "left", location, player);
+		action.addStep(location, location.getBlock().getType(), portalBlockType);
+		location.getBlock().setType(portalBlockType);
+		// block 16
+		location = moveLocation(2, "right", location, player);
+		action.addStep(location, location.getBlock().getType(), portalBlockType);
+		location.getBlock().setType(portalBlockType);
+		// --
 		moveLocation(1, "left", location, player);
-		spawnSign(moveLocation(1, "back", location, player), warp_name, player.getFacing());
-	}
+		// --
+		// block 17
+		spawnSign(moveLocation(1, "back", location, player), warp_name, player.getFacing(), action);
 
-	private void spawnSign(Location moveLocation, String warp_name, BlockFace blockFace) {
-		moveLocation.getBlock().setType(Material.WALL_SIGN);
-		Block block = moveLocation.getBlock();
-		block.setType(Material.WALL_SIGN);
-
-		Directional dir = (Directional) block.getBlockData();
-
-		dir.setFacing(blockFace.getOppositeFace());
-		block.setBlockData(dir);
-
-		Sign sign = (Sign) block.getState();
-		sign.setLine(1, warp_name);
-		sign.update();
-	}
-
-	private void spawnCommandBlock(Location location, String warp_name, Player player) {
-		location.getBlock().setType(Material.COMMAND_BLOCK);
-
-		CommandBlock cmdBlock = (CommandBlock) location.getBlock().getState();
-		double x = (int) location.getX();
-		double y = (int) location.getY();
-		double z = (int) location.getZ();
-
-		x = (x < 0 ? x - 0.5 : x + 0.5);
-		y += 2;
-		z = (z < 0 ? z - 0.5 : z + 0.5);
-
-		// X + 0.5 ~ Z + 0.5 ~ Y + 2 ~ Offset
-		cmdBlock.setCommand("/mp tpc " + location.getWorld().getName() + " " + x + " " + y + " " + z + " " + warp_name);
-		cmdBlock.update();
+		actionList.add(action);
 	}
 
 	private Location moveLocation(int numOfTimes, String direction, Location location, Player player) {
@@ -273,6 +321,51 @@ public class Main extends JavaPlugin {
 		}
 
 		return location;
+	}
+
+	private void spawnCommandBlock(Location location, String warp_name, Player player, PortalCreatedAction action) {
+		action.addStep(location, location.getBlock().getType(), Material.COMMAND_BLOCK);
+
+		location.getBlock().setType(Material.COMMAND_BLOCK);
+
+		CommandBlock cmdBlock = (CommandBlock) location.getBlock().getState();
+		double x = (int) location.getX();
+		double y = (int) location.getY();
+		double z = (int) location.getZ();
+
+		x = (x < 0 ? x - 0.5 : x + 0.5);
+		y += 2;
+		z = (z < 0 ? z - 0.5 : z + 0.5);
+
+		// X + 0.5 ~ Z + 0.5 ~ Y + 2 ~ Offset
+
+		String commandBlockCommand = "/mp tpc " + location.getWorld().getName() + " " + x + " " + y + " " + z + " "
+				+ warp_name;
+
+		cmdBlock.setCommand(commandBlockCommand);
+		cmdBlock.update();
+
+		action.setCommandBlockCommand(commandBlockCommand);
+	}
+
+	private void spawnSign(Location moveLocation, String warp_name, BlockFace blockFace, PortalCreatedAction action) {
+		action.addStep(moveLocation, moveLocation.getBlock().getType(), Material.WALL_SIGN);
+
+		moveLocation.getBlock().setType(Material.WALL_SIGN);
+		Block block = moveLocation.getBlock();
+		block.setType(Material.WALL_SIGN);
+
+		Directional dir = (Directional) block.getBlockData();
+
+		dir.setFacing(blockFace.getOppositeFace());
+		block.setBlockData(dir);
+
+		Sign sign = (Sign) block.getState();
+		sign.setLine(1, warp_name);
+		sign.update();
+
+		action.setSignText(warp_name);
+		action.setSignDirection(blockFace.getOppositeFace());
 	}
 
 	private void teleport(CommandSender sender, String[] args) {
@@ -481,7 +574,22 @@ public class Main extends JavaPlugin {
 	}
 
 	private void testCommand(CommandSender sender, String[] args) {
+		PortalCreatedAction e = actionList.get(actionList.size() - 1);
 
+		sender.sendMessage(e.getFromMaterial(Integer.parseInt(args[1])).toString());
+
+//		PortalCreatedAction action = actionList.get(actionList.size() - 1);
+//		String message = "";
+//		int num = Integer.parseInt(args[1]);
+//
+//		// sender.sendMessage(action.getFromMaterial(0).toString());
+//
+//		message += ("Player: " + action.getPlayer().getName() + " Location: x" + action.getLocation(num).getX() + "/"
+//				+ action.getLocation(num).getY() + "/" + action.getLocation(num).getZ() + " FromBlock: "
+//				+ action.getFromMaterial(num).toString() + " toBlock: " + action.getToMaterial(num).toString()
+//				+ " cmdcommand: " + action.getCommandBlockCommand() + " signText: " + action.getSignText() + "\n");
+//
+//		getLogger().info(message);
 	}
 
 	private void setBlockType(CommandSender sender, String[] args) {
