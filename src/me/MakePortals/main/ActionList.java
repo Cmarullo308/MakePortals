@@ -44,36 +44,26 @@ public class ActionList<T> extends ArrayList<T> {
 
 	public void undo(Player player) {
 		PortalCreatedAction e;
-	
+
 		for (int i = this.size() - 1; i >= 0; i--) {
 			e = (PortalCreatedAction) get(i);
 			if (e.getPlayer().equals(player) && !e.isUndone()) {
-				for (int blockNum = 0; blockNum < e.size(); blockNum++) {
-					e.getLocation(blockNum).getBlock().setType(e.getFromMaterial(blockNum));
-				}
+				e.undo();
 				e.setUndone(true);
 				return;
 			}
-	
+
 		}
-	
+
 	}
 
 	public void redo(Player player) {
 		PortalCreatedAction e;
-	
-		for (int i = 0; i < this.size() - 1; i++) {
+
+		for (int i = 0; i < this.size(); i++) {
 			e = (PortalCreatedAction) get(i);
 			if (e.getPlayer().equals(player) && e.isUndone()) {
-				for (int blockNum = 0; blockNum < e.size(); blockNum++) {
-					if (e.getToMaterial(blockNum) == Material.WALL_SIGN) {
-						setSign(e.getLocation(blockNum), e.getSignDirection(), e.getSignText());
-					} else if (e.getToMaterial(blockNum) == Material.COMMAND_BLOCK) {
-						setCommandBlock(e.getLocation(blockNum), e.getCommandBlockCommand());
-					} else {
-						e.getLocation(blockNum).getBlock().setType(e.getToMaterial(blockNum));
-					}
-				}
+				e.redo();
 				e.setUndone(false);
 				return;
 			}
@@ -89,27 +79,5 @@ public class ActionList<T> extends ArrayList<T> {
 				this.remove(i);
 			}
 		}
-	}
-
-	private void setCommandBlock(Location location, String commandBlockCommand) {
-		location.getBlock().setType(Material.COMMAND_BLOCK);
-		CommandBlock cmdBlock = (CommandBlock) location.getBlock().getState();
-
-		cmdBlock.setCommand(commandBlockCommand);
-		cmdBlock.update();
-	}
-
-	private void setSign(Location location, BlockFace signDirection, String signText) {
-		Block block = location.getBlock();
-		block.setType(Material.WALL_SIGN);
-
-		Directional direction = (Directional) block.getBlockData();
-
-		direction.setFacing(signDirection);
-		block.setBlockData(direction);
-
-		Sign sign = (Sign) block.getState();
-		sign.setLine(1, signText);
-		sign.update();
 	}
 }

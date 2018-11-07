@@ -1,3 +1,4 @@
 portal_block_type: BLUE_CONCRETE
 portal_signs_enabled: "true"
+portal_preasure_plate: 
 max_undos: 20

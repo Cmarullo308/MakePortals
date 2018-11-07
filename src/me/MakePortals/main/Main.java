@@ -14,6 +14,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import net.md_5.bungee.api.ChatColor;
+import sun.security.action.GetLongAction;
 
 public class Main extends JavaPlugin {
 	static ActionList<PortalCreatedAction> actionList;
@@ -36,7 +37,7 @@ public class Main extends JavaPlugin {
 
 	@Override
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-		
+
 		if (args.length == 0) {
 			sender.sendMessage(ChatColor.RED + "No arguements");
 		} else {
@@ -176,11 +177,10 @@ public class Main extends JavaPlugin {
 		Location location = player.getLocation().clone();
 
 		makePortal(player, location, args[1]);
-
 	}
 
 	private void makePortal(Player player, Location location, String warp_name) {
-		PortalCreatedAction action = new PortalCreatedAction(player); // For undos
+		PortalCreatedAction action = new PortalCreatedAction(player, this); // For undos
 
 		Material portalBlockType = Material.valueOf(getConfig().getString("portal_block_type"));
 
@@ -632,5 +632,6 @@ public class Main extends JavaPlugin {
 	 */
 	private void noPermission(CommandSender sender) {
 		sender.sendMessage(ChatColor.RED + "You do not have permission to use this command");
+
 	}
 }
