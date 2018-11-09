@@ -1,16 +1,21 @@
 package me.MakePortals.main;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.Banner;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Chest;
 import org.bukkit.block.CommandBlock;
+import org.bukkit.block.Dispenser;
 import org.bukkit.block.Furnace;
 import org.bukkit.block.Hopper;
+import org.bukkit.block.ShulkerBox;
 import org.bukkit.block.Sign;
+import org.bukkit.block.banner.Pattern;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
 import org.bukkit.entity.Player;
@@ -24,6 +29,8 @@ public class PortalCreatedAction {
 	private ArrayList<Material> fromMaterials;
 	private ArrayList<BlockData> fromBlockDatas;
 	private ArrayList<ItemStack[]> fromBlockInventoryContents;
+	private ArrayList<String[]> fromSignText;
+	private ArrayList<List<Pattern>> fromPatten;
 	//
 	private ArrayList<Material> toMaterials;
 	private String commandBlockCommand;
@@ -34,8 +41,8 @@ public class PortalCreatedAction {
 	private int size;
 
 	public void undo() {
-		main.getLogger().info(fromBlockInventoryContents.size() + "");
-		for (int blockNum = 0; blockNum < size(); blockNum++) {
+		// for (int blockNum = 0; blockNum < size(); blockNum++) {
+		for (int blockNum = size() - 1; blockNum >= 0; blockNum--) {
 			switch (getFromMaterial(blockNum)) {
 			case CHEST:
 				getLocation(blockNum).getBlock().setType(getFromMaterial(blockNum));
@@ -65,8 +72,72 @@ public class PortalCreatedAction {
 				hopper.update();
 				hopper.getInventory().setContents(fromBlockInventoryContents.get(blockNum));
 				break;
+			case DISPENSER:
+				getLocation(blockNum).getBlock().setType(getFromMaterial(blockNum));
+				Dispenser dispenser = (Dispenser) getLocation(blockNum).getBlock().getState();
+				dispenser.setBlockData(fromBlockDatas.get(blockNum));
+				dispenser.update();// Has to update before setting contents because it erases the contents
+				dispenser.getInventory().setContents(fromBlockInventoryContents.get(blockNum));
+				break;
+			case SIGN:
+			case WALL_SIGN:
+				getLocation(blockNum).getBlock().setType(getFromMaterial(blockNum));
+				Sign sign = (Sign) getLocation(blockNum).getBlock().getState();
+				sign.setBlockData(fromBlockDatas.get(blockNum));
+				for (int line = 0; line < fromSignText.get(blockNum).length; line++) {
+					sign.setLine(line, fromSignText.get(blockNum)[line]);
+				}
+				sign.update();
+
+				getLocation(blockNum).getBlock().setBlockData(fromBlockDatas.get(blockNum));
+				break;
+			case WHITE_SHULKER_BOX:
+			case ORANGE_SHULKER_BOX:
+			case MAGENTA_SHULKER_BOX:
+			case LIGHT_BLUE_SHULKER_BOX:
+			case YELLOW_SHULKER_BOX:
+			case LIME_SHULKER_BOX:
+			case PINK_SHULKER_BOX:
+			case GRAY_SHULKER_BOX:
+			case LIGHT_GRAY_SHULKER_BOX:
+			case CYAN_SHULKER_BOX:
+			case PURPLE_SHULKER_BOX:
+			case BLUE_SHULKER_BOX:
+			case BROWN_SHULKER_BOX:
+			case GREEN_SHULKER_BOX:
+			case RED_SHULKER_BOX:
+			case BLACK_SHULKER_BOX:
+				getLocation(blockNum).getBlock().setType(getFromMaterial(blockNum));
+				ShulkerBox shulkerBox = (ShulkerBox) getLocation(blockNum).getBlock().getState();
+				shulkerBox.setBlockData(fromBlockDatas.get(blockNum));
+				shulkerBox.update();// Has to update before setting contents because it erases the contents
+				shulkerBox.getInventory().setContents(fromBlockInventoryContents.get(blockNum));
+				break;
+			case WHITE_BANNER:
+			case ORANGE_BANNER:
+			case MAGENTA_BANNER:
+			case LIGHT_BLUE_BANNER:
+			case YELLOW_BANNER:
+			case LIME_BANNER:
+			case PINK_BANNER:
+			case GRAY_BANNER:
+			case LIGHT_GRAY_BANNER:
+			case CYAN_BANNER:
+			case PURPLE_BANNER:
+			case BLUE_BANNER:
+			case BROWN_BANNER:
+			case GREEN_BANNER:
+			case RED_BANNER:
+			case BLACK_BANNER:
+				getLocation(blockNum).getBlock().setType(getFromMaterial(blockNum));
+				Banner banner = (Banner) getLocation(blockNum).getBlock().getState();
+				banner.setBlockData(fromBlockDatas.get(blockNum));
+				banner.setPatterns(fromPatten.get(blockNum));
+				banner.update();
+				break;
 			default:
 				getLocation(blockNum).getBlock().setType(getFromMaterial(blockNum));
+				getLocation(blockNum).getBlock().setBlockData(fromBlockDatas.get(blockNum));
 				break;
 			}
 
@@ -81,6 +152,8 @@ public class PortalCreatedAction {
 		fromMaterials = new ArrayList<Material>();
 		fromBlockDatas = new ArrayList<BlockData>();
 		fromBlockInventoryContents = new ArrayList<ItemStack[]>();
+		fromSignText = new ArrayList<String[]>();
+		fromPatten = new ArrayList<List<Pattern>>();
 		//
 		toMaterials = new ArrayList<Material>();
 		this.player = player;
@@ -89,30 +162,144 @@ public class PortalCreatedAction {
 	}
 
 	public void addStep(Location location, Block fromBlock, Material toMaterial) {
+		boolean hasPattern = false;
+		boolean hasSignText = false;
+		boolean hasInventory = false;
+
 		blockLocations.add(location.clone());
 		fromMaterials.add(fromBlock.getType());
 		fromBlockDatas.add(fromBlock.getBlockData().clone());
+
 		switch (fromBlock.getType()) {
 		case CHEST:
 			addStepChest(fromBlock);
+			hasInventory = true;
 			break;
 		case FURNACE:
 			addStepFurnace(fromBlock);
+			hasInventory = true;
 			break;
 		case HOPPER:
 			addStepHopper(fromBlock);
+			hasInventory = true;
 			break;
 		case TRAPPED_CHEST:
 			addStepChest(fromBlock);
+			hasInventory = true;
+			break;
+		case DISPENSER:
+			addStepDispenser(fromBlock);
+			hasInventory = true;
+			break;
+		case SIGN:
+			addStepSign(fromBlock);
+			hasSignText = true;
+			break;
+		case WALL_SIGN:
+			addStepSign(fromBlock);
+			hasSignText = true;
+			break;
+		case WHITE_SHULKER_BOX:
+		case ORANGE_SHULKER_BOX:
+		case MAGENTA_SHULKER_BOX:
+		case LIGHT_BLUE_SHULKER_BOX:
+		case YELLOW_SHULKER_BOX:
+		case LIME_SHULKER_BOX:
+		case PINK_SHULKER_BOX:
+		case GRAY_SHULKER_BOX:
+		case LIGHT_GRAY_SHULKER_BOX:
+		case CYAN_SHULKER_BOX:
+		case PURPLE_SHULKER_BOX:
+		case BLUE_SHULKER_BOX:
+		case BROWN_SHULKER_BOX:
+		case GREEN_SHULKER_BOX:
+		case RED_SHULKER_BOX:
+		case BLACK_SHULKER_BOX:
+			addStepShulkerBox(fromBlock);
+			hasInventory = true;
+			break;
+		case WHITE_BANNER:
+		case ORANGE_BANNER:
+		case MAGENTA_BANNER:
+		case LIGHT_BLUE_BANNER:
+		case YELLOW_BANNER:
+		case LIME_BANNER:
+		case PINK_BANNER:
+		case GRAY_BANNER:
+		case LIGHT_GRAY_BANNER:
+		case CYAN_BANNER:
+		case PURPLE_BANNER:
+		case BLUE_BANNER:
+		case BROWN_BANNER:
+		case GREEN_BANNER:
+		case RED_BANNER:
+		case BLACK_BANNER:
+			addStepBanner(fromBlock);
+			hasPattern = true;
 			break;
 		default:
-			fromBlockInventoryContents.add(null);
 			break;
 		}
+
+		if (!hasInventory) {
+			fromBlockInventoryContents.add(null);
+		}
+
+		if (!hasPattern) {
+			fromPatten.add(null);
+		}
+
+		if (!hasSignText) {
+			fromSignText.add(null);
+		}
+
 		toMaterials.add(toMaterial);
 		size++;
 	}
-	
+
+	private void addStepShulkerBox(Block fromBlock) {
+		ShulkerBox shulkerBox = (ShulkerBox) fromBlock.getState();
+		ItemStack[] oldContents = shulkerBox.getInventory().getContents();
+		ItemStack[] backupContents = new ItemStack[oldContents.length];
+
+		for (int spot = 0; spot < oldContents.length; spot++) {
+			if (oldContents[spot] != null) {
+				backupContents[spot] = oldContents[spot].clone();
+			}
+		}
+
+		fromBlockInventoryContents.add(backupContents);
+
+		shulkerBox.getInventory().clear(); // So the chest doesn't drop its contents
+	}
+
+	private void addStepBanner(Block fromBlock) {
+		Banner banner = (Banner) fromBlock.getState();
+
+		fromPatten.add(new ArrayList<Pattern>(banner.getPatterns()));
+	}
+
+	private void addStepDispenser(Block fromBlock) {
+		Dispenser dispenser = (Dispenser) fromBlock.getState();
+		ItemStack[] oldContents = dispenser.getInventory().getContents();
+		ItemStack[] backupContents = new ItemStack[oldContents.length];
+
+		for (int spot = 0; spot < oldContents.length; spot++) {
+			if (oldContents[spot] != null) {
+				backupContents[spot] = oldContents[spot].clone();
+			}
+		}
+
+		fromBlockInventoryContents.add(backupContents);
+
+		dispenser.getInventory().clear(); // So the dispenser doesn't drop its contents
+	}
+
+	private void addStepSign(Block fromBlock) {
+		Sign sign = (Sign) fromBlock.getState();
+		fromSignText.add(sign.getLines().clone());
+	}
+
 	private void addStepHopper(Block fromBlock) {
 		Hopper hopper = (Hopper) fromBlock.getState();
 		ItemStack[] oldContents = hopper.getInventory().getContents();

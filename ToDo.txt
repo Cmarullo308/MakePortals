@@ -3,6 +3,8 @@ help menu
 check if config blocks are right if manually changed
 undos put back signs and commandblocks with their text
 set max undos in config
+combine addStepChest with addChestFurnace etc
+noteblock glitch
 
 Fix super server (Last)
 
