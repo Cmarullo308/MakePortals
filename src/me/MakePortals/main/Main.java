@@ -8,10 +8,13 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Banner;
+import org.bukkit.block.Beacon;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.BrewingStand;
 import org.bukkit.block.Chest;
 import org.bukkit.block.CommandBlock;
+import org.bukkit.block.Container;
 import org.bukkit.block.Dispenser;
 import org.bukkit.block.Dropper;
 import org.bukkit.block.Jukebox;
@@ -26,6 +29,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 import net.md_5.bungee.api.ChatColor;
 
@@ -571,14 +576,18 @@ public class Main extends JavaPlugin {
 		Location location = new Location(getServer().getWorld("world"), -139, 71, 89);
 
 		Block block = location.getBlock();
-		Material before = block.getType();
-
+		
+		Beacon beacon = (Beacon) block.getState();
+		PotionEffectType pe = beacon.getPrimaryEffect().getType();
+		
 		block.setType(Material.GRASS_BLOCK);
-		block.setType(Material.ALLIUM);
+		block.setType(Material.BEACON);
+		
+//		beacon = (Beacon) block.getState();
+//		beacon.setPrimaryEffect(pe);
+//		beacon.update();
 
-		sender.sendMessage(before.toString());
-
-//		ShulkerBox chest = (ShulkerBox) block.getState();
+//		Container chest = (Container) block.getState();
 //
 //		ItemStack[] contents = chest.getInventory().getContents().clone();
 //		ItemStack[] backupContents = new ItemStack[contents.length];

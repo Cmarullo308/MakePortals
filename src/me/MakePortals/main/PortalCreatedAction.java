@@ -6,8 +6,10 @@ import java.util.List;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Banner;
+import org.bukkit.block.Beacon;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.BrewingStand;
 import org.bukkit.block.Chest;
 import org.bukkit.block.CommandBlock;
 import org.bukkit.block.Dispenser;
@@ -20,6 +22,9 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.potion.PotionEffectType;
+
+import com.sun.org.apache.xpath.internal.axes.HasPositionalPredChecker;
 
 public class PortalCreatedAction {
 	Main main;
@@ -31,6 +36,7 @@ public class PortalCreatedAction {
 	private ArrayList<ItemStack[]> fromBlockInventoryContents;
 	private ArrayList<String[]> fromSignText;
 	private ArrayList<List<Pattern>> fromPatten;
+	private ArrayList<PotionEffectType> fromPotionEffectTypes;
 	//
 	private ArrayList<Material> toMaterials;
 	private String commandBlockCommand;
@@ -79,6 +85,13 @@ public class PortalCreatedAction {
 				dispenser.update();// Has to update before setting contents because it erases the contents
 				dispenser.getInventory().setContents(fromBlockInventoryContents.get(blockNum));
 				break;
+			case BREWING_STAND:
+				getLocation(blockNum).getBlock().setType(getFromMaterial(blockNum));
+				BrewingStand brewingStand = (BrewingStand) getLocation(blockNum).getBlock().getState();
+				brewingStand.setBlockData(fromBlockDatas.get(blockNum));
+				brewingStand.update();// Has to update before setting contents because it erases the contents
+				brewingStand.getInventory().setContents(fromBlockInventoryContents.get(blockNum));
+				break;
 			case SIGN:
 			case WALL_SIGN:
 				getLocation(blockNum).getBlock().setType(getFromMaterial(blockNum));
@@ -90,6 +103,13 @@ public class PortalCreatedAction {
 				sign.update();
 
 				getLocation(blockNum).getBlock().setBlockData(fromBlockDatas.get(blockNum));
+				break;
+			case BEACON:
+				getLocation(blockNum).getBlock().setType(getFromMaterial(blockNum));
+				Beacon beacon = (Beacon) getLocation(blockNum).getBlock().getState();
+
+				beacon.setPrimaryEffect(fromPotionEffectTypes.get(blockNum));
+				beacon.update();
 				break;
 			case WHITE_SHULKER_BOX:
 			case ORANGE_SHULKER_BOX:
@@ -154,6 +174,7 @@ public class PortalCreatedAction {
 		fromBlockInventoryContents = new ArrayList<ItemStack[]>();
 		fromSignText = new ArrayList<String[]>();
 		fromPatten = new ArrayList<List<Pattern>>();
+		fromPotionEffectTypes = new ArrayList<PotionEffectType>();
 		//
 		toMaterials = new ArrayList<Material>();
 		this.player = player;
@@ -165,6 +186,7 @@ public class PortalCreatedAction {
 		boolean hasPattern = false;
 		boolean hasSignText = false;
 		boolean hasInventory = false;
+		boolean hadPotionEffectType = false;
 
 		blockLocations.add(location.clone());
 		fromMaterials.add(fromBlock.getType());
@@ -191,6 +213,9 @@ public class PortalCreatedAction {
 			addStepDispenser(fromBlock);
 			hasInventory = true;
 			break;
+		case BREWING_STAND:
+			addStepBrewingStand(fromBlock);
+			break;
 		case SIGN:
 			addStepSign(fromBlock);
 			hasSignText = true;
@@ -198,6 +223,10 @@ public class PortalCreatedAction {
 		case WALL_SIGN:
 			addStepSign(fromBlock);
 			hasSignText = true;
+			break;
+		case BEACON:
+			addStepBeacon(fromBlock);
+			hadPotionEffectType = true;
 			break;
 		case WHITE_SHULKER_BOX:
 		case ORANGE_SHULKER_BOX:
@@ -253,8 +282,34 @@ public class PortalCreatedAction {
 			fromSignText.add(null);
 		}
 
+		if (!hadPotionEffectType) {
+			fromPotionEffectTypes.add(null);
+		}
+
 		toMaterials.add(toMaterial);
 		size++;
+	}
+
+	private void addStepBeacon(Block fromBlock) {
+		Beacon beacon = (Beacon) fromBlock.getState();
+
+		fromPotionEffectTypes.add(beacon.getPrimaryEffect().getType());
+	}
+
+	private void addStepBrewingStand(Block fromBlock) {
+		BrewingStand brewingStand = (BrewingStand) fromBlock.getState();
+		ItemStack[] oldContents = brewingStand.getInventory().getContents();
+		ItemStack[] backupContents = new ItemStack[oldContents.length];
+
+		for (int spot = 0; spot < oldContents.length; spot++) {
+			if (oldContents[spot] != null) {
+				backupContents[spot] = oldContents[spot].clone();
+			}
+		}
+
+		fromBlockInventoryContents.add(backupContents);
+
+		brewingStand.getInventory().clear(); // So the chest doesn't drop its contents
 	}
 
 	private void addStepShulkerBox(Block fromBlock) {
@@ -270,7 +325,7 @@ public class PortalCreatedAction {
 
 		fromBlockInventoryContents.add(backupContents);
 
-		shulkerBox.getInventory().clear(); // So the chest doesn't drop its contents
+		shulkerBox.getInventory().clear(); // So the container doesn't drop its contents
 	}
 
 	private void addStepBanner(Block fromBlock) {
