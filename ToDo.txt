@@ -11,6 +11,36 @@ Fix super server (Last)
 
 
 -----future code-----
+//Set chest contents
+Location location = new Location(getServer().getWorld("world"), -139, 71, 89);
+
+Block block = location.getBlock();
+
+Chest chest = (Chest) block.getState();
+
+ItemStack[] contents = chest.getInventory().getContents();
+contents[0] = new ItemStack(Material.DIAMOND_BLOCK, 1);
+chest.getInventory().setContents(contents);
+
+
+//-----
+//get and change wood log orientation
+Location loc = ((Player) sender).getLocation().add(0, 0, -2);
+		Block block = loc.getBlock();
+
+		Orientable dir = (Orientable) block.getBlockData();
+		if (dir.getAxis() == Axis.X) {
+			sender.sendMessage("Test");
+		}
+
+		dir.setAxis(Axis.X);
+		block.setBlockData(dir);
+
+		sender.sendMessage(dir.getAxes().toString());
+
+
+
+//----------
 //Make sign
 	Location location = ((Player) sender).getLocation().add(0, 1, 2);
 
