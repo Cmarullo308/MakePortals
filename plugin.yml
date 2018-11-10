@@ -1,7 +1,7 @@
 main: me.MakePortals.main.Main
 name: MakePortals
 author: CJM
-version: 0.0
+version: 1.0
 api-version: 1.13
 description: Creates portals to set locations
 commands:

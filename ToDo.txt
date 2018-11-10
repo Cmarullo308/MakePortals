@@ -1,10 +1,11 @@
 Make it so you need the blocks in survival
 help menu
-check if config blocks are right if manually changed
-undos put back signs and commandblocks with their text
-set max undos in config
-combine addStepChest with addChestFurnace etc
 noteblock glitch
+record all blocks first and then replace (So doors can be put back when /undo)
+change permission have more dots, better names
+add usage to arguement errors
+edit locations (yaw and pitch)
+change command "setblocktype" to /mp blocktype set (?)
 
 Fix super server (Last)
 

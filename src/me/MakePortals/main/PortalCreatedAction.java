@@ -9,12 +9,10 @@ import org.bukkit.block.Banner;
 import org.bukkit.block.Beacon;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.block.BrewingStand;
 import org.bukkit.block.Chest;
 import org.bukkit.block.CommandBlock;
-import org.bukkit.block.Dispenser;
+import org.bukkit.block.Container;
 import org.bukkit.block.Furnace;
-import org.bukkit.block.Hopper;
 import org.bukkit.block.ShulkerBox;
 import org.bukkit.block.Sign;
 import org.bukkit.block.banner.Pattern;
@@ -23,8 +21,6 @@ import org.bukkit.block.data.Directional;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffectType;
-
-import com.sun.org.apache.xpath.internal.axes.HasPositionalPredChecker;
 
 public class PortalCreatedAction {
 	Main main;
@@ -51,46 +47,16 @@ public class PortalCreatedAction {
 		for (int blockNum = size() - 1; blockNum >= 0; blockNum--) {
 			switch (getFromMaterial(blockNum)) {
 			case CHEST:
-				getLocation(blockNum).getBlock().setType(getFromMaterial(blockNum));
-				Chest chest = (Chest) getLocation(blockNum).getBlock().getState();
-				chest.setBlockData(fromBlockDatas.get(blockNum));
-				chest.update();// Has to update before setting contents because it erases the contents
-				chest.getInventory().setContents(fromBlockInventoryContents.get(blockNum));
-				break;
 			case TRAPPED_CHEST:
-				getLocation(blockNum).getBlock().setType(getFromMaterial(blockNum));
-				Chest tChest = (Chest) getLocation(blockNum).getBlock().getState();
-				tChest.setBlockData(fromBlockDatas.get(blockNum));
-				tChest.update();// Has to update before setting contents because it erases the contents
-				tChest.getInventory().setContents(fromBlockInventoryContents.get(blockNum));
-				break;
 			case FURNACE:
-				getLocation(blockNum).getBlock().setType(getFromMaterial(blockNum));
-				Furnace furnace = (Furnace) getLocation(blockNum).getBlock().getState();
-				furnace.setBlockData(fromBlockDatas.get(blockNum));
-				furnace.update();// Has to update before setting contents because it erases the contents
-				furnace.getInventory().setContents(fromBlockInventoryContents.get(blockNum));
-				break;
 			case HOPPER:
-				getLocation(blockNum).getBlock().setType(getFromMaterial(blockNum));
-				Hopper hopper = (Hopper) getLocation(blockNum).getBlock().getState();
-				hopper.setBlockData(fromBlockDatas.get(blockNum));
-				hopper.update();
-				hopper.getInventory().setContents(fromBlockInventoryContents.get(blockNum));
-				break;
 			case DISPENSER:
-				getLocation(blockNum).getBlock().setType(getFromMaterial(blockNum));
-				Dispenser dispenser = (Dispenser) getLocation(blockNum).getBlock().getState();
-				dispenser.setBlockData(fromBlockDatas.get(blockNum));
-				dispenser.update();// Has to update before setting contents because it erases the contents
-				dispenser.getInventory().setContents(fromBlockInventoryContents.get(blockNum));
-				break;
 			case BREWING_STAND:
 				getLocation(blockNum).getBlock().setType(getFromMaterial(blockNum));
-				BrewingStand brewingStand = (BrewingStand) getLocation(blockNum).getBlock().getState();
-				brewingStand.setBlockData(fromBlockDatas.get(blockNum));
-				brewingStand.update();// Has to update before setting contents because it erases the contents
-				brewingStand.getInventory().setContents(fromBlockInventoryContents.get(blockNum));
+				Container container = (Container) getLocation(blockNum).getBlock().getState();
+				container.setBlockData(fromBlockDatas.get(blockNum));
+				container.update();// Has to update before setting contents because it erases the contents
+				container.getInventory().setContents(fromBlockInventoryContents.get(blockNum));
 				break;
 			case SIGN:
 			case WALL_SIGN:
@@ -194,27 +160,27 @@ public class PortalCreatedAction {
 
 		switch (fromBlock.getType()) {
 		case CHEST:
-			addStepChest(fromBlock);
+			addStepContainer(fromBlock);
 			hasInventory = true;
 			break;
 		case FURNACE:
-			addStepFurnace(fromBlock);
+			addStepContainer(fromBlock);
 			hasInventory = true;
 			break;
 		case HOPPER:
-			addStepHopper(fromBlock);
+			addStepContainer(fromBlock);
 			hasInventory = true;
 			break;
 		case TRAPPED_CHEST:
-			addStepChest(fromBlock);
+			addStepContainer(fromBlock);
 			hasInventory = true;
 			break;
 		case DISPENSER:
-			addStepDispenser(fromBlock);
+			addStepContainer(fromBlock);
 			hasInventory = true;
 			break;
 		case BREWING_STAND:
-			addStepBrewingStand(fromBlock);
+			addStepContainer(fromBlock);
 			break;
 		case SIGN:
 			addStepSign(fromBlock);
@@ -244,7 +210,7 @@ public class PortalCreatedAction {
 		case GREEN_SHULKER_BOX:
 		case RED_SHULKER_BOX:
 		case BLACK_SHULKER_BOX:
-			addStepShulkerBox(fromBlock);
+			addStepContainer(fromBlock);
 			hasInventory = true;
 			break;
 		case WHITE_BANNER:
@@ -290,42 +256,26 @@ public class PortalCreatedAction {
 		size++;
 	}
 
+	private void addStepContainer(Block fromBlock) {
+		Container container = (Container) fromBlock.getState();
+		ItemStack[] oldContents = container.getInventory().getContents();
+		ItemStack[] backupContents = new ItemStack[oldContents.length];
+
+		for (int spot = 0; spot < oldContents.length; spot++) {
+			if (oldContents[spot] != null) {
+				backupContents[spot] = oldContents[spot].clone();
+			}
+		}
+
+		fromBlockInventoryContents.add(backupContents);
+
+		container.getInventory().clear(); // So the chest doesn't drop its contents
+	}
+
 	private void addStepBeacon(Block fromBlock) {
 		Beacon beacon = (Beacon) fromBlock.getState();
 
 		fromPotionEffectTypes.add(beacon.getPrimaryEffect().getType());
-	}
-
-	private void addStepBrewingStand(Block fromBlock) {
-		BrewingStand brewingStand = (BrewingStand) fromBlock.getState();
-		ItemStack[] oldContents = brewingStand.getInventory().getContents();
-		ItemStack[] backupContents = new ItemStack[oldContents.length];
-
-		for (int spot = 0; spot < oldContents.length; spot++) {
-			if (oldContents[spot] != null) {
-				backupContents[spot] = oldContents[spot].clone();
-			}
-		}
-
-		fromBlockInventoryContents.add(backupContents);
-
-		brewingStand.getInventory().clear(); // So the chest doesn't drop its contents
-	}
-
-	private void addStepShulkerBox(Block fromBlock) {
-		ShulkerBox shulkerBox = (ShulkerBox) fromBlock.getState();
-		ItemStack[] oldContents = shulkerBox.getInventory().getContents();
-		ItemStack[] backupContents = new ItemStack[oldContents.length];
-
-		for (int spot = 0; spot < oldContents.length; spot++) {
-			if (oldContents[spot] != null) {
-				backupContents[spot] = oldContents[spot].clone();
-			}
-		}
-
-		fromBlockInventoryContents.add(backupContents);
-
-		shulkerBox.getInventory().clear(); // So the container doesn't drop its contents
 	}
 
 	private void addStepBanner(Block fromBlock) {
@@ -334,73 +284,9 @@ public class PortalCreatedAction {
 		fromPatten.add(new ArrayList<Pattern>(banner.getPatterns()));
 	}
 
-	private void addStepDispenser(Block fromBlock) {
-		Dispenser dispenser = (Dispenser) fromBlock.getState();
-		ItemStack[] oldContents = dispenser.getInventory().getContents();
-		ItemStack[] backupContents = new ItemStack[oldContents.length];
-
-		for (int spot = 0; spot < oldContents.length; spot++) {
-			if (oldContents[spot] != null) {
-				backupContents[spot] = oldContents[spot].clone();
-			}
-		}
-
-		fromBlockInventoryContents.add(backupContents);
-
-		dispenser.getInventory().clear(); // So the dispenser doesn't drop its contents
-	}
-
 	private void addStepSign(Block fromBlock) {
 		Sign sign = (Sign) fromBlock.getState();
 		fromSignText.add(sign.getLines().clone());
-	}
-
-	private void addStepHopper(Block fromBlock) {
-		Hopper hopper = (Hopper) fromBlock.getState();
-		ItemStack[] oldContents = hopper.getInventory().getContents();
-		ItemStack[] backupContents = new ItemStack[oldContents.length];
-
-		for (int spot = 0; spot < oldContents.length; spot++) {
-			if (oldContents[spot] != null) {
-				backupContents[spot] = oldContents[spot].clone();
-			}
-		}
-
-		fromBlockInventoryContents.add(backupContents);
-
-		hopper.getInventory().clear(); // So the chest doesn't drop its contents
-	}
-
-	private void addStepFurnace(Block fromBlock) {
-		Furnace furnace = (Furnace) fromBlock.getState();
-		ItemStack[] oldContents = furnace.getInventory().getContents();
-		ItemStack[] backupContents = new ItemStack[oldContents.length];
-
-		for (int spot = 0; spot < oldContents.length; spot++) {
-			if (oldContents[spot] != null) {
-				backupContents[spot] = oldContents[spot].clone();
-			}
-		}
-
-		fromBlockInventoryContents.add(backupContents);
-
-		furnace.getInventory().clear(); // So the chest doesn't drop its contents
-	}
-
-	private void addStepChest(Block fromBlock) {
-		Chest chest = (Chest) fromBlock.getState();
-		ItemStack[] oldContents = chest.getInventory().getContents();
-		ItemStack[] backupContents = new ItemStack[oldContents.length];
-
-		for (int spot = 0; spot < oldContents.length; spot++) {
-			if (oldContents[spot] != null) {
-				backupContents[spot] = oldContents[spot].clone();
-			}
-		}
-
-		fromBlockInventoryContents.add(backupContents);
-
-		chest.getInventory().clear(); // So the chest doesn't drop its contents
 	}
 
 	public Location getLocation(int index) {

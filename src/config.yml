@@ -1,4 +1,6 @@
 portal_block_type: BLUE_CONCRETE
+portal_preasure_plate: STONE_PRESSURE_PLATE
 portal_signs_enabled: "true"
-portal_preasure_plate: 
+teleport_particles_enabled: "true"
+teleport_sound_enabled: "true"
 max_undos: 20

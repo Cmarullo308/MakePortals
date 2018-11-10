@@ -1,37 +1,19 @@
 package me.MakePortals.main;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.bukkit.DyeColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.World;
-import org.bukkit.block.Banner;
-import org.bukkit.block.Beacon;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.block.BrewingStand;
-import org.bukkit.block.Chest;
 import org.bukkit.block.CommandBlock;
-import org.bukkit.block.Container;
-import org.bukkit.block.Dispenser;
-import org.bukkit.block.Dropper;
-import org.bukkit.block.Jukebox;
-import org.bukkit.block.ShulkerBox;
 import org.bukkit.block.Sign;
-import org.bukkit.block.banner.Pattern;
-import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
-import org.bukkit.block.data.type.EndPortalFrame;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
-
 import net.md_5.bungee.api.ChatColor;
 
 public class Main extends JavaPlugin {
@@ -45,12 +27,24 @@ public class Main extends JavaPlugin {
 			Material.BROWN_CONCRETE_POWDER, Material.GREEN_CONCRETE_POWDER, Material.RED_CONCRETE_POWDER,
 			Material.BLACK_CONCRETE_POWDER };
 
+	static final Material[] pressurePlates = { Material.STONE_PRESSURE_PLATE, Material.OAK_PRESSURE_PLATE,
+			Material.SPRUCE_PRESSURE_PLATE, Material.BIRCH_PRESSURE_PLATE, Material.JUNGLE_PRESSURE_PLATE,
+			Material.ACACIA_PRESSURE_PLATE, Material.DARK_OAK_PRESSURE_PLATE, Material.LIGHT_WEIGHTED_PRESSURE_PLATE,
+			Material.HEAVY_WEIGHTED_PRESSURE_PLATE };
+
+	private Sound teleportSound;
+	private Particle teleportParticle;
+	private int teleportParticleSize;
+
 	@Override
 	public void onEnable() {
-		this.getServer().getPluginManager().registerEvents(new EventListener(this), this);
-
 		getConfig().options().copyDefaults(true);
+		checkConfigValues();
 		saveConfig();
+
+		teleportSound = Sound.ENTITY_ENDERMAN_TELEPORT;
+		teleportParticle = Particle.EXPLOSION_LARGE;
+		teleportParticleSize = 5;
 
 		actionList = new ActionList<PortalCreatedAction>(getConfig().getInt("max_undos"));
 	}
@@ -61,13 +55,19 @@ public class Main extends JavaPlugin {
 			sender.sendMessage(ChatColor.RED + "No arguements");
 		} else {
 			switch (args[0].toLowerCase()) {
-			case "setblock":
+			case "setblocktype":
 				setBlockType(sender, args);
+				break;
+			case "setpressureplate":
+				setPressurePlate(sender, args);
 				break;
 			case "location":
 				locationSubCommand(sender, args);
 				break;
 			case "tp":
+				teleport(sender, args);
+				break;
+			case "teleport":
 				teleport(sender, args);
 				break;
 			case "test":
@@ -88,6 +88,15 @@ public class Main extends JavaPlugin {
 			case "redo":
 				redo(sender, args);
 				break;
+			case "teleportsoundenabled":
+				toggleTeleportSound(sender, args);
+				break;
+			case "teleportparticlesenabled":
+				toggleTeleportParticles(sender, args);
+				break;
+			case "help":
+				showHelpMenu(sender, args);
+				break;
 			default:
 				sender.sendMessage(ChatColor.RED + "Invalid command");
 				break;
@@ -95,6 +104,184 @@ public class Main extends JavaPlugin {
 		}
 
 		return true;
+	}
+
+	private void toggleTeleportParticles(CommandSender sender, String[] args) {
+		if (!sender.hasPermission("makeportals.setteleportparticlesenabled")) {
+			noPermission(sender);
+			return;
+		}
+
+		if (args.length != 2) {
+			sender.sendMessage(ChatColor.RED
+					+ "Invalid number of arguements\nUsage: /MakePortals teleportparticlesenabled <true/false>");
+			return;
+		}
+
+		if (!args[1].equalsIgnoreCase("true") && !args[1].toLowerCase().equalsIgnoreCase("false")) {
+			sender.sendMessage(
+					ChatColor.RED + "Invalid arguements\nUsage: /MakePortals teleportparticlesenabled <true/false>");
+			return;
+		}
+
+		getConfig().set("teleport_particles_enabled", args[1].toLowerCase());
+		saveConfig();
+		if (args[1].equalsIgnoreCase("true")) {
+			sender.sendMessage(ChatColor.GREEN + "Teleport particles enabled");
+		} else {
+			sender.sendMessage(ChatColor.GREEN + "Teleport particles disabled");
+		}
+	}
+
+	private void toggleTeleportSound(CommandSender sender, String[] args) {
+		if (!sender.hasPermission("makeportals.setteleportsoundenabled")) {
+			noPermission(sender);
+			return;
+		}
+
+		if (args.length != 2) {
+			sender.sendMessage(ChatColor.RED
+					+ "Invalid number of arguements\nUsage: /MakePortals teleportSoundEnabled <true/false>");
+			return;
+		}
+
+		if (!args[1].equalsIgnoreCase("true") && !args[1].toLowerCase().equalsIgnoreCase("false")) {
+			sender.sendMessage(
+					ChatColor.RED + "Invalid arguements\nUsage: /MakePortals teleportSoundEnabled <true/false>");
+			return;
+		}
+
+		getConfig().set("teleport_sound_enabled", args[1].toLowerCase());
+		saveConfig();
+		if (args[1].equalsIgnoreCase("true")) {
+			sender.sendMessage(ChatColor.GREEN + "Teleport sound enabled");
+		} else {
+			sender.sendMessage(ChatColor.GREEN + "Teleport sound disabled");
+		}
+	}
+
+	private void showHelpMenu(CommandSender sender, String[] args) {
+		String helpMenu = "";
+
+		if (args.length == 1 || args[1].equals("1")) {
+			helpMenu += ChatColor.GREEN + "Commands\n";
+			helpMenu += ChatColor.GREEN + "Create <Location Name>: " + ChatColor.WHITE
+					+ "Creates a portal to that location\n";
+			helpMenu += ChatColor.GREEN + "Location <set/remove/list>: " + ChatColor.WHITE
+					+ "Set/remove a location or list all set locations\n";
+			helpMenu += ChatColor.GREEN + "Setblocktype <blockType>: " + ChatColor.WHITE
+					+ "Set the type of blocks portals will be made of\n";
+			helpMenu += ChatColor.GREEN + "SetPressurePlate <Type Of Pressure Plate>: " + ChatColor.WHITE
+					+ "Sets the type of pressure plates used in the portals\n";
+			helpMenu += ChatColor.GREEN + "Teleport <Location name>: " + ChatColor.WHITE
+					+ "Teleports you to the location\n";
+			helpMenu += ChatColor.GREEN + "Signsenabled <true/false>: " + ChatColor.WHITE
+					+ "Sets if signs will spawn on the portals\n";
+			helpMenu += ChatColor.GREEN + "Undo: " + ChatColor.WHITE + "Undoes portal creation\n";
+			helpMenu += ChatColor.GREEN + "Redo: " + ChatColor.WHITE + "redoes portal creation\n";
+			helpMenu += ChatColor.GREEN + "TeleportSoundEnabled <true/false>: " + ChatColor.WHITE
+					+ "Toggles teleport sound\n";
+			helpMenu += ChatColor.GREEN + "TeleportParticlesEnabled <true/false>: " + ChatColor.WHITE
+					+ "Toggles teleport particles";
+		}
+
+		sender.sendMessage(helpMenu);
+	}
+
+	private void checkConfigValues() {
+		// Test that config values are real materials
+
+		// Block type
+		Material blockType = null;
+		boolean noException = true;
+
+		try {
+			blockType = Material.valueOf(getConfig().getString("portal_block_type"));
+		} catch (IllegalArgumentException e) {
+			noException = false;
+			getLogger().info("Invalid portal block type, resetting to default");
+			getConfig().set("portal_block_type", "BLUE_CONCRETE");
+		}
+
+		if (noException) {
+			boolean fallingBlock = false;
+			for (Material block : fallingBlocks) {
+				if (block == blockType) {
+					fallingBlock = true;
+					break;
+				}
+			}
+
+			if (fallingBlock) {
+				getLogger().info("Invalid portal block type (Cannot be a block that falls), resetting to default");
+				getConfig().set("portal_block_type", "BLUE_CONCRETE");
+			}
+		}
+
+		// Pressure plate type
+		noException = true;
+
+		try {
+			blockType = Material.valueOf(getConfig().getString("portal_preasure_plate"));
+		} catch (IllegalArgumentException e) {
+			noException = false;
+			getLogger().info("Invalid pressure plate type, resetting to default");
+			getConfig().set("portal_preasure_plate", "STONE_PRESSURE_PLATE");
+		}
+
+		if (noException) {
+			boolean validPressurePlate = false;
+			for (Material plateType : pressurePlates) {
+				if (plateType == blockType) {
+					validPressurePlate = true;
+					break;
+				}
+			}
+
+			if (!validPressurePlate) {
+				getLogger().info("Invalid pressure plate type, resetting to default");
+				getConfig().set("portal_preasure_plate", "STONE_PRESSURE_PLATE");
+			}
+		}
+
+		// Portal signs enables boolean
+		if ((!getConfig().getString("portal_signs_enabled").equals("true"))
+				&& (!getConfig().getString("portal_signs_enabled").equals("false"))) {
+			getLogger().info("\"portal_signs_enabled\" must be true or false, resetting to default");
+			getConfig().set("portal_signs_enabled", "true");
+		}
+
+		// max undos
+		noException = true;
+
+		try {
+			Integer.parseInt(getConfig().getString("max_undos"));
+		} catch (NumberFormatException e) {
+			noException = false;
+			getLogger().info("Invalid number of undos in config, resetting to default");
+			getConfig().set("max_undos", 20);
+		}
+
+		if (noException) {
+			if (getConfig().getInt("max_undos") < 1) {
+				getLogger().info("Max undos must be 1 or higher, resetting to default");
+			}
+		}
+
+		// teleport particles enabled
+		if ((!getConfig().getString("teleport_particles_enabled").equals("true"))
+				&& (!getConfig().getString("teleport_particles_enabled").equals("false"))) {
+			getLogger().info("\"teleport_particles_enabled\" must be true or false, resetting to default");
+			getConfig().set("teleport_particles_enabled", "true");
+		}
+
+		// teleport sound enabled
+		if ((!getConfig().getString("teleport_sound_enabled").equals("true"))
+				&& (!getConfig().getString("teleport_sound_enabled").equals("false"))) {
+			getLogger().info("\"teleport_sound_enabled\" must be true or false, resetting to default");
+			getConfig().set("teleport_sound_enabled", "true");
+		}
+
 	}
 
 	private void redo(CommandSender sender, String[] args) {
@@ -151,6 +338,7 @@ public class Main extends JavaPlugin {
 				if (player.getLocation().distance(fromLocation) < distance_from_plate_block) {
 					player.sendMessage("Warp \"" + warp_name + "\" does not exist");
 				}
+				break;
 			}
 			return;
 		}
@@ -168,6 +356,15 @@ public class Main extends JavaPlugin {
 		for (Player player : getServer().getOnlinePlayers()) {
 			if (player.getLocation().distance(fromLocation) < distance_from_plate_block) {
 				player.teleport(toLocation);
+				if (getConfig().getString("teleport_sound_enabled").equals("true")) {
+					player.playSound(toLocation, teleportSound, 1f, 1f);
+				}
+
+				if (getConfig().getString("teleport_particles_enabled").equals("true")) {
+					player.spawnParticle(teleportParticle, toLocation, teleportParticleSize);
+				}
+
+				break;
 			}
 		}
 	}
@@ -204,14 +401,22 @@ public class Main extends JavaPlugin {
 		PortalCreatedAction action = new PortalCreatedAction(player, this); // For undos
 
 		Material portalBlockType = Material.valueOf(getConfig().getString("portal_block_type"));
+		Material portalPressurePlateType = Material.valueOf(getConfig().getString("portal_preasure_plate"));
 
-		// Block 1 -- sign
 		moveLocation(2, "up", location, player);
-		spawnSign(location, warp_name, player.getFacing(), action);
-		// Block 2 -- row 3 middle
+		// Block 1 -- row 3 middle
 		moveLocation(1, "forward", location, player);
 		action.addStep(location, location.getBlock(), portalBlockType);
 		location.getBlock().setType(portalBlockType);
+		// Block 2 -- Sign
+		moveLocation(1, "back", location, player);
+		if (getConfig().getString("portal_signs_enabled").equalsIgnoreCase("true")) {
+			spawnSign(location, warp_name, player.getFacing(), action);
+		}
+
+		// --
+		moveLocation(1, "forward", location, player);
+		// --
 		// Block 3 -- row 3 right
 		moveLocation(1, "right", location, player);
 		action.addStep(location, location.getBlock(), portalBlockType);
@@ -248,8 +453,8 @@ public class Main extends JavaPlugin {
 		location.getBlock().setType(portalBlockType);
 		// Block 10 -- preasure plate
 		moveLocation(1, "back", location, player);
-		action.addStep(location, location.getBlock(), Material.STONE_PRESSURE_PLATE);
-		location.getBlock().setType(Material.STONE_PRESSURE_PLATE);
+		action.addStep(location, location.getBlock(), portalPressurePlateType);
+		location.getBlock().setType(portalPressurePlateType);
 		// Block 11 -- row 1 right
 		moveLocation(1, "right", location, player);
 		action.addStep(location, location.getBlock(), portalBlockType);
@@ -265,7 +470,7 @@ public class Main extends JavaPlugin {
 		moveLocation(1, "down", location, player);
 		action.addStep(location, location.getBlock(), portalBlockType);
 		location.getBlock().setType(portalBlockType);
-		//Block 14 -- command block
+		// Block 14 -- command block
 		moveLocation(1, "down", location, player);
 		spawnCommandBlock(location, warp_name, player, action);
 
@@ -368,7 +573,6 @@ public class Main extends JavaPlugin {
 	}
 
 	private void teleport(CommandSender sender, String[] args) {
-
 		if (args.length == 2) {
 			if (!(sender instanceof Player)) {
 				sender.sendMessage(ChatColor.RED + "Must be a playr to run this command");
@@ -382,6 +586,14 @@ public class Main extends JavaPlugin {
 			}
 
 			((Player) sender).teleport(teleportLocation);
+			// Sound
+			if (getConfig().getString("teleport_sound_enabled").equals("true")) {
+				((Player) sender).playSound(teleportLocation, teleportSound, 1f, 1f);
+			}
+			// Particles
+			if (getConfig().getString("teleport_particles_enabled").equals("true")) {
+				((Player) sender).spawnParticle(teleportParticle, teleportLocation, teleportParticleSize);
+			}
 		} else if (args.length == 3) {
 			Player player = getServer().getPlayer(args[1]);
 
@@ -393,6 +605,14 @@ public class Main extends JavaPlugin {
 			Location teleportLocation = getTeleportLocation(sender, args[2]);
 
 			player.teleport(teleportLocation);
+			// Sound
+			if (getConfig().getString("teleport_sound_enabled").equals("true")) {
+				player.playSound(teleportLocation, teleportSound, 1f, 1f);
+			}
+			// Particles
+			if (getConfig().getString("teleport_particles_enabled").equals("true")) {
+				player.spawnParticle(teleportParticle, teleportLocation, teleportParticleSize);
+			}
 		} else {
 			sender.sendMessage(ChatColor.RED + "Invalid number of arguements");
 		}
@@ -573,19 +793,9 @@ public class Main extends JavaPlugin {
 	}
 
 	private void testCommand(CommandSender sender, String[] args) {
-		Location location = new Location(getServer().getWorld("world"), -139, 71, 89);
-
-		Block block = location.getBlock();
-		
-		Beacon beacon = (Beacon) block.getState();
-		PotionEffectType pe = beacon.getPrimaryEffect().getType();
-		
-		block.setType(Material.GRASS_BLOCK);
-		block.setType(Material.BEACON);
-		
-//		beacon = (Beacon) block.getState();
-//		beacon.setPrimaryEffect(pe);
-//		beacon.update();
+//		Location location = new Location(getServer().getWorld("world"), -139, 71, 89);
+//
+//		Block block = location.getBlock();
 
 //		Container chest = (Container) block.getState();
 //
@@ -618,22 +828,22 @@ public class Main extends JavaPlugin {
 			return;
 		}
 
-		Material block;
+		Material blockType;
 
 		try {
-			block = Material.valueOf(args[1].toUpperCase());
+			blockType = Material.valueOf(args[1].toUpperCase());
 		} catch (Exception e) {
 			sender.sendMessage(ChatColor.RED + "Invalid block type");
 			return;
 		}
 
-		if (!block.isBlock()) {
+		if (!blockType.isBlock()) {
 			sender.sendMessage(ChatColor.RED + args[1] + " is not a placeable block");
 			return;
 		}
 
 		for (Material material : fallingBlocks) {
-			if (block.equals(material)) {
+			if (blockType.equals(material)) {
 				sender.sendMessage(ChatColor.RED + "Portals cannot be made out of blocks that can fall");
 				return;
 			}
@@ -642,7 +852,40 @@ public class Main extends JavaPlugin {
 		getConfig().set("portal_block_type", args[1].toUpperCase());
 		saveConfig();
 
-		sender.sendMessage(ChatColor.GREEN + "Portal block type set to " + block);
+		sender.sendMessage(ChatColor.GREEN + "Portal block type set to " + blockType);
+	}
+
+	private void setPressurePlate(CommandSender sender, String[] args) {
+		if (!sender.hasPermission("makeportals.setpressureplatetype")) {
+			noPermission(sender);
+			return;
+		}
+
+		Material blockType;
+
+		try {
+			blockType = Material.valueOf(args[1].toUpperCase());
+		} catch (Exception e) {
+			sender.sendMessage(ChatColor.RED + "Invalid block type");
+			return;
+		}
+
+		boolean isPressurePlate = false;
+		for (Material pressurePlateInList : pressurePlates) {
+			if (pressurePlateInList == blockType) {
+				isPressurePlate = true;
+			}
+		}
+
+		if (!isPressurePlate) {
+			sender.sendMessage(ChatColor.RED + args[1].toUpperCase() + " is not a type of pressure plate");
+			return;
+		}
+
+		getConfig().set("portal_preasure_plate", args[1].toUpperCase());
+		saveConfig();
+
+		sender.sendMessage(ChatColor.GREEN + "Portal pressure plate set to " + blockType);
 	}
 
 	/**
