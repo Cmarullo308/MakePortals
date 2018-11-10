@@ -45,9 +45,7 @@ public class ActionList<T> extends ArrayList<T> {
 				e.setUndone(true);
 				return;
 			}
-
 		}
-
 	}
 
 	public void redo(Player player) {

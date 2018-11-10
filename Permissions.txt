@@ -1,6 +1,13 @@
-makeportals.setblocktype -- Set the type of blocks the portals will be make of
-makeportals.setwarplocation  -- Set a warp location
-makeportals.togglesigns -- Enable or Disable Portal signs
-makeportals.setpressureplatetype -- Set the type of pressureplate that's used
-makeportals.setteleportsoundenabled -- toggle teleport sound
-makeportals.setteleportparticlesenabled -- toggle teleport particles
+//Locations
+makeportals.locations.set  -- Set a warp location
+makeportals.locations.remove -- remove a warp location
+//Create
+makeportals.create.makeportal -- create a portal to a location
+makeportals.create.undo -- undo portal creation
+makeportals.create.redo -- redo portal creation
+//Settings
+makeportals.preferences.setblocktype -- Set the type of blocks the portals will be make of
+makeportals.preferences.togglesigns -- Enable or Disable Portal signs
+makeportals.preferences.setpressureplatetype -- Set the type of pressureplate that's used
+makeportals.preferences.setteleportsoundenabled -- toggle teleport sound
+makeportals.preferences.setteleportparticlesenabled -- toggle teleport particles
