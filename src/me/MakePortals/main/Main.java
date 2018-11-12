@@ -7,12 +7,15 @@ import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.Chest;
 import org.bukkit.block.CommandBlock;
 import org.bukkit.block.Sign;
 import org.bukkit.block.data.Directional;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import net.md_5.bungee.api.ChatColor;
 
@@ -931,34 +934,33 @@ public class Main extends JavaPlugin {
 	}
 
 	private void testCommand(CommandSender sender, String[] args) {
-		// Location location = new Location(getServer().getWorld("world"), -139, 71,
-		// 89);
-		//
-		// Block block = location.getBlock();
+//		Location location = new Location(getServer().getWorld("world"), -139, 71, 89);
+//
+//		Block block = location.getBlock();
 
-		// Container chest = (Container) block.getState();
-		//
-		// ItemStack[] contents = chest.getInventory().getContents().clone();
-		// ItemStack[] backupContents = new ItemStack[contents.length];
-		//
-		// String test = "";
-		//
-		// for (int i = 0; i < contents.length; i++) {
-		// if (contents[i] != null) {
-		// backupContents[i] = contents[i].clone();
-		// }
-		// }
-		//
-		// chest.getInventory().clear();
-		// block.setType(Material.DIAMOND_BLOCK);
-		//
-		// for (int i = 0; i < contents.length; i++) {
-		// if (backupContents[i] != null) {
-		// test += backupContents[i].toString() + "[" + i + "], ";
-		// }
-		// }
-		//
-		// sender.sendMessage(test);
+//		Container chest = (Container) block.getState();
+//
+//		ItemStack[] contents = chest.getInventory().getContents().clone();
+//		ItemStack[] backupContents = new ItemStack[contents.length];
+//
+//		String test = "";
+//
+//		for (int i = 0; i < contents.length; i++) {
+//			if (contents[i] != null) {
+//				backupContents[i] = contents[i].clone();
+//			}
+//		}
+//
+//		chest.getInventory().clear();
+//		block.setType(Material.DIAMOND_BLOCK);
+//
+//		for (int i = 0; i < contents.length; i++) {
+//			if (backupContents[i] != null) {
+//				test += backupContents[i].toString() + "[" + i + "], ";
+//			}
+//		}
+//
+//		sender.sendMessage(test);
 	}
 
 	/**
