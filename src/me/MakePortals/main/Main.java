@@ -511,7 +511,16 @@ public class Main extends JavaPlugin {
 	 * @param sender
 	 */
 	private void listWarpLocations(CommandSender sender) {
-		Object[] keys = getConfig().getConfigurationSection("warp_locations").getKeys(false).toArray();
+		Object[] keys;
+		try {
+			keys = getConfig().getConfigurationSection("warp_locations").getKeys(false).toArray();
+		} catch (NullPointerException e) {
+			sender.sendMessage(ChatColor.GREEN + "No locations currently saved");
+			return;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return;
+		}
 
 		String listMessage = "Locations:\n";
 
