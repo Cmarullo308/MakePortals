@@ -1,26 +1,39 @@
 package me.MakePortals.main;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.block.Chest;
 import org.bukkit.block.CommandBlock;
 import org.bukkit.block.Sign;
 import org.bukkit.block.data.Directional;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.ShapedRecipe;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import net.md_5.bungee.api.ChatColor;
+import net.minecraft.server.v1_13_R2.DataWatcher.Item;
 
 public class Main extends JavaPlugin {
 	static ActionList<PortalCreatedAction> actionList;
+	static ItemStack portalCrystal;
+	static String portalCrystalLore = "~~~~~~~~~~";
 
 	// All blocks that are affected by gravity
 	static final Material[] fallingBlocks = { Material.SAND, Material.GRAVEL, Material.ANVIL, Material.DRAGON_EGG,
@@ -46,6 +59,8 @@ public class Main extends JavaPlugin {
 		getConfig().options().copyDefaults(true);
 		checkConfigValues();
 		saveConfig();
+
+		addPortalCrystalRecipe();
 
 		teleportSound = Sound.ENTITY_ENDERMAN_TELEPORT;
 		teleportParticle = Particle.EXPLOSION_LARGE;
@@ -112,6 +127,32 @@ public class Main extends JavaPlugin {
 		}
 
 		return true;
+	}
+
+	public static ItemStack getPortalCrystalItemStack(int amount) {
+		ItemStack newPortalCrystal = new ItemStack(Material.DIAMOND, amount);
+		ItemMeta meta = newPortalCrystal.getItemMeta();
+		meta.setDisplayName("Portal Crystal");
+		meta.addEnchant(Enchantment.LUCK, 1, true);
+		meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+		meta.setLore(Arrays.asList(portalCrystalLore));
+		newPortalCrystal.setItemMeta(meta);
+		return newPortalCrystal;
+	}
+
+	private void addPortalCrystalRecipe() {
+		portalCrystal = getPortalCrystalItemStack(2);
+		ItemMeta meta = portalCrystal.getItemMeta();
+		meta.setDisplayName("Portal Crystal");
+		meta.addEnchant(Enchantment.LUCK, 1, true);
+		meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+		meta.setLore(new ArrayList<String>(Arrays.asList(portalCrystalLore)));
+		portalCrystal.setItemMeta(meta);
+
+		ShapedRecipe portalCrystalRecipe = new ShapedRecipe(new NamespacedKey(this, "Portal-Crystal"), portalCrystal);
+		portalCrystalRecipe.shape("#%#", "%@%", "#%#").setIngredient('#', Material.REDSTONE)
+				.setIngredient('%', Material.GOLD_INGOT).setIngredient('@', Material.DIAMOND);
+		getServer().addRecipe(portalCrystalRecipe);
 	}
 
 	/**
@@ -213,6 +254,46 @@ public class Main extends JavaPlugin {
 
 	}
 
+	private boolean checkAndRemoveBlocks(Player player, Material portalMaterial, Material pressurePlateType,
+			boolean useSign) {
+		// If in survival, checks that players has the portal crystal and blocks needed
+		if (player.getGameMode() == GameMode.SURVIVAL) {
+
+			Inventory inv = player.getInventory();
+			ItemStack[] contents = inv.getContents();
+			int portalCrystalLocation = 0;
+			boolean enough_items = false;
+
+			if (inv.contains(portalMaterial, 10) && (inv.contains(Material.SIGN, 1) || !useSign)
+					&& inv.contains(pressurePlateType, 1)) {
+				for (int i = 0; i < contents.length; i++) {
+					if (contents[i] != null && contents[i].getItemMeta().getLore() != null
+							&& contents[i].getItemMeta().getLore().get(0).equals(portalCrystalLore)) {
+						enough_items = true;
+						portalCrystalLocation = i;
+					}
+				}
+			}
+
+			if (!enough_items) {
+				player.sendMessage(ChatColor.RED + "Not enough blocks, you need 10 " + portalMaterial
+						+ ", 1 SIGN, 1 Portal Crystal and 1 " + pressurePlateType);
+				return false;
+			}
+
+			inv.removeItem(new ItemStack(portalMaterial, 10));
+			if (useSign) {
+				inv.removeItem(new ItemStack(Material.SIGN, 1));
+			}
+			inv.removeItem(new ItemStack(pressurePlateType, 1));
+			inv.getItem(portalCrystalLocation).setAmount(inv.getItem(portalCrystalLocation).getAmount() - 1);
+
+			return true;
+		} else {
+			return true;
+		}
+	}
+
 	/**
 	 * Command sent by the command block under the portals
 	 * 
@@ -280,12 +361,17 @@ public class Main extends JavaPlugin {
 			return;
 		}
 
-		if (!sender.hasPermission("makeportals.create.makeportal")) {
-			noPermission(sender);
-			return;
-		}
-
-		if (args.length != 2) {
+		if (args.length == 2) {
+			if (!sender.hasPermission("makeportals.create.makeportal")) {
+				noPermission(sender);
+				return;
+			}
+		} else if (args.length == 5) {
+			if (!sender.hasPermission("makeportals.create.makeportalcustom")) {
+				noPermission(sender);
+				return;
+			}
+		} else {
 			sender.sendMessage(ChatColor.RED + "Invalid number of arguements");
 			return;
 		}
@@ -299,9 +385,81 @@ public class Main extends JavaPlugin {
 			return;
 		}
 
+		Player player = (Player) sender;
+
+		// move to func?
+		Material portalBlockType;
+		Material portalPressurePlateType;
+		boolean useSign;
+
+		if (args.length == 2) {
+			portalBlockType = Material.valueOf(getConfig().getString("portal_block_type"));
+			portalPressurePlateType = Material.valueOf(getConfig().getString("portal_preasure_plate"));
+			if (getConfig().getString("portal_signs_enabled").equalsIgnoreCase("true")) {
+				useSign = true;
+			} else {
+				useSign = false;
+			}
+		} else {
+			// Block type check
+			try {
+				portalBlockType = Material.valueOf(args[2].toUpperCase());
+			} catch (IllegalArgumentException e) {
+				player.sendMessage(ChatColor.RED + args[2] + " is an invalid block type");
+				return;
+			}
+
+			for (Material material : fallingBlocks) {
+				if (portalBlockType == material) {
+					player.sendMessage(ChatColor.RED + "Portal cannot be made out of blocks that can fall");
+					return;
+				}
+			}
+			// Pressure plate type check
+			try {
+				portalPressurePlateType = Material.valueOf(args[3].toUpperCase());
+			} catch (IllegalArgumentException e) {
+				player.sendMessage(ChatColor.RED + args[3] + " is an invalid pressure plate");
+				return;
+			}
+
+			boolean isPressurePlate = false;
+			for (Material pressurePlate : pressurePlates) {
+				if (portalPressurePlateType == pressurePlate) {
+					isPressurePlate = true;
+					break;
+				}
+			}
+
+			if (!isPressurePlate) {
+				player.sendMessage(ChatColor.RED + args[3] + " is an invalid pressure plate");
+				return;
+			}
+
+			// Sign true or false check
+			if (!args[4].equalsIgnoreCase("true") && !args[4].equalsIgnoreCase("false")) {
+				player.sendMessage(ChatColor.RED + "Invalid arguement " + args[4] + ", must be \"True\" or \"False\"");
+				return;
+			}
+
+			useSign = Boolean.parseBoolean(args[4].toLowerCase());
+		}
+
+		// /move to func
+
+		if (args.length == 5) {
+			if (!checkAndRemoveBlocks(player, portalBlockType, portalPressurePlateType, useSign)) {
+				return;
+			}
+		} else {
+			if (!checkAndRemoveBlocks(player, Material.valueOf(getConfig().getString("portal_block_type")),
+					Material.valueOf(getConfig().getString("portal_preasure_plate")), useSign)) {
+				return;
+			}
+		}
+
 		// Checks done
 
-		Player player = (Player) sender;
 		Location location = player.getLocation().clone();
 
 		if (location.getY() >= 254) {
@@ -311,7 +469,7 @@ public class Main extends JavaPlugin {
 
 		actionList.deleteUndosFor(player);
 
-		makePortal(player, location, locationName);
+		makePortal(player, location, locationName, portalBlockType, portalPressurePlateType, useSign);
 	}
 
 	/**
@@ -389,11 +547,11 @@ public class Main extends JavaPlugin {
 	 * @param location
 	 * @param warp_name
 	 */
-	private void makePortal(Player player, Location location, String warp_name) {
-		PortalCreatedAction action = new PortalCreatedAction(player, this); // For undos
-
-		Material portalBlockType = Material.valueOf(getConfig().getString("portal_block_type"));
-		Material portalPressurePlateType = Material.valueOf(getConfig().getString("portal_preasure_plate"));
+	private void makePortal(Player player, Location location, String warp_name, Material portalBlockType,
+			Material portalPressurePlateType, boolean useSign) {
+		PortalCreatedAction action = new PortalCreatedAction(player, this, portalBlockType, portalPressurePlateType,
+				useSign); // For
+							// undos
 
 		moveLocation(2, "up", location, player);
 		// Block 1 -- row 3 middle
@@ -402,7 +560,7 @@ public class Main extends JavaPlugin {
 		location.getBlock().setType(portalBlockType);
 		// Block 2 -- Sign
 		moveLocation(1, "back", location, player);
-		if (getConfig().getString("portal_signs_enabled").equalsIgnoreCase("true")) {
+		if (useSign) {
 			spawnSign(location, warp_name, player.getFacing(), action);
 		}
 
@@ -934,6 +1092,10 @@ public class Main extends JavaPlugin {
 	}
 
 	private void testCommand(CommandSender sender, String[] args) {
+		Player player = (Player) sender;
+
+		player.sendMessage(player.getInventory().getContents()[0].getItemMeta().getLore().get(0) + "");
+
 //		Location location = new Location(getServer().getWorld("world"), -139, 71, 89);
 //
 //		Block block = location.getBlock();

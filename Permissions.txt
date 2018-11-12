@@ -3,6 +3,7 @@ makeportals.locations.set  -- Set a warp location
 makeportals.locations.remove -- remove a warp location
 //Create
 makeportals.create.makeportal -- create a portal to a location
+makeportals.create.makeportalcustom --
 makeportals.create.undo -- undo portal creation
 makeportals.create.redo -- redo portal creation
 //Settings

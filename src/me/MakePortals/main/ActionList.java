@@ -41,8 +41,7 @@ public class ActionList<T> extends ArrayList<T> {
 		for (int i = this.size() - 1; i >= 0; i--) {
 			e = (PortalCreatedAction) get(i);
 			if (e.getPlayer().equals(player) && !e.isUndone()) {
-				e.undo();
-				e.setUndone(true);
+				e.undo(player);
 				return;
 			}
 		}
@@ -55,7 +54,6 @@ public class ActionList<T> extends ArrayList<T> {
 			e = (PortalCreatedAction) get(i);
 			if (e.getPlayer().equals(player) && e.isUndone()) {
 				e.redo();
-				e.setUndone(false);
 				return;
 			}
 		}
